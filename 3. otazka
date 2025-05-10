@@ -1,0 +1,42 @@
+-- 3. Která kategorie potravin zdražuje nejpomaleji (je u ní nejnižší percentuální meziroční nárůst)?
+
+CREATE OR REPLACE VIEW v_rozdil_cen_potravin AS
+SELECT
+    sub.nazev_polozky,
+    min_ceny.min_cena,
+    max_ceny.max_cena,
+    ROUND(((max_ceny.max_cena::numeric - min_ceny.min_cena::numeric) / min_ceny.min_cena::numeric) * 100, 1) AS procentualni_rozdil
+FROM (
+    SELECT
+        cpc.name AS nazev_polozky,
+        EXTRACT(YEAR FROM cp.date_from) AS rok,
+        cp.value AS cena
+    FROM czechia_price cp
+    INNER JOIN czechia_price_category cpc ON cp.category_code = cpc.code
+) AS sub
+JOIN (
+    SELECT
+        name AS nazev_polozky,
+        MIN(value) AS min_cena
+    FROM czechia_price cp
+    INNER JOIN czechia_price_category cpc ON cp.category_code = cpc.code
+    WHERE EXTRACT(YEAR FROM cp.date_from) = (SELECT MIN(EXTRACT(YEAR FROM cp.date_from)) FROM czechia_price cp)
+    GROUP BY name
+) AS min_ceny ON sub.nazev_polozky = min_ceny.nazev_polozky
+JOIN (
+    SELECT
+        name AS nazev_polozky,
+        MAX(value) AS max_cena
+    FROM czechia_price cp
+    INNER JOIN czechia_price_category cpc ON cp.category_code = cpc.code
+    WHERE EXTRACT(YEAR FROM cp.date_from) = (SELECT MAX(EXTRACT(YEAR FROM cp.date_from)) FROM czechia_price cp)
+    GROUP BY name
+) AS max_ceny ON sub.nazev_polozky = max_ceny.nazev_polozky
+GROUP BY sub.nazev_polozky, min_ceny.min_cena, max_ceny.max_cena;
+
+SELECT *
+FROM v_rozdil_cen_potravin vrcp
+ORDER BY vrcp.procentualni_rozdil 
+
+
+--nejnizsi narust ceny potravin mezi roky 2006-2018 ma Cukr krystalový
