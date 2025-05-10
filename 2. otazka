@@ -1,0 +1,39 @@
+-- 2. Kolik je možné si koupit litrů mléka a kilogramů chleba za první a poslední srovnatelné období v dostupných datech cen a mezd?
+CREATE OR REPLACE VIEW v_ceny_vybranych_potravin_rocne AS
+SELECT
+	sub.nazev_polozky,
+	sub.rok,
+	MIN(sub.cena) AS min_cena,
+	MAX(sub.cena) AS max_cena,
+	ROUND(AVG(sub.cena)::numeric, 1) AS prumer_ceny_za_rok
+FROM (
+	SELECT
+		czechia_price_category.name AS nazev_polozky,
+		EXTRACT(YEAR FROM czechia_price.date_from) AS rok,
+		value AS cena
+	FROM czechia_price
+	INNER JOIN czechia_price_category ON code = category_code
+	WHERE czechia_price_category.name = 'Mléko polotučné pasterované'
+	OR czechia_price_category.name = 'Chléb konzumní kmínový'
+) AS sub
+GROUP BY sub.nazev_polozky,sub.rok
+ORDER BY sub.rok, sub.nazev_polozky
+
+
+
+--zjisteni prumernych rocnich mezd celostatne napric odvetvimi pro porovnani s cenami potravin, po uvolneni WHERE muzeme kontrolovat jednotlive roky
+SELECT
+	rok,
+	odvetvi,
+	kod_odvetvi,
+	prumer_rocni,
+	round(AVG(prumer_rocni) OVER (PARTITION BY rok ),1) AS prumer_celostatni
+FROM v_mzdy_celkem
+--WHERE rok = '2018'
+GROUP BY rok, odvetvi, kod_odvetvi, prumer_rocni
+ORDER BY rok, kod_odvetvi
+
+
+SELECT *
+FROM v_ceny_vybranych_potravin_rocne
+ORDER BY rok
