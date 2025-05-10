@@ -1,0 +1,30 @@
+CREATE VIEW v_mzdy_celkem AS
+SELECT
+	sub.odvetvi,
+	sub.kod_odvetvi,
+	sub.ctvrtleti,
+	sub.mzda_ctvrtleti,
+	sub.rok,
+	ROUND(AVG(sub.mzda_ctvrtleti) OVER (PARTITION BY sub.kod_odvetvi, sub.rok), 1) AS prumer_rocni
+FROM (
+	SELECT
+		czechia_payroll_industry_branch.name AS odvetvi,
+		industry_branch_code AS kod_odvetvi,
+		payroll_quarter AS ctvrtleti,
+		payroll_year AS rok,
+		value AS mzda_ctvrtleti
+	FROM czechia_payroll
+	INNER JOIN czechia_payroll_industry_branch ON code = industry_branch_code
+	WHERE calculation_code = '100'
+		AND value_type_code = '5958'
+		AND payroll_quarter IN ('1','2','3','4')
+) AS sub
+ORDER BY kod_odvetvi, rok, ctvrtleti;
+
+SELECT * FROM v_mzdy_celkem
+	--WHERE kod_odvetvi = 'J'; --Zmenou pismena lze zkontrolovat kazde odvetvi zvlast
+	
+/*
+v každém odvětví průměrné mzdy v čase stoupají. Někdy můžeme zahlédnou meziroční stagnaci, v minimu případů i meziroční pokles, ale v celkovám čase je trend stoupající.
+V mnoha případech nebyl problém růstu v čase i o 200% 
+*/	
