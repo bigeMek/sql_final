@@ -1,0 +1,37 @@
+--vytvori tabulku, kde vystup je nazev odvetvi, industry code daneho odvetvi a prumerna mzda za dany rok  
+
+CREATE TABLE t_platy_v_letech AS
+SELECT
+  cpib.name AS name,
+  cp.industry_branch_code AS industry_code,
+  cp.payroll_year AS year,
+  ROUND(AVG(cp.value), 1) AS avg_sallary
+FROM czechia_payroll cp
+LEFT JOIN czechia_payroll_calculation cpc ON cp.value_type_code = cpc.code
+INNER JOIN czechia_payroll_unit cpu ON cpu.code = cp.unit_code
+LEFT JOIN czechia_payroll_industry_branch cpib ON cpib.code = cp.industry_branch_code
+WHERE cp.calculation_code = '100'
+  AND cp.value_type_code = '5958'
+  AND cpib.name IS NOT NULL
+GROUP BY
+  cpib.name,
+  cp.industry_branch_code,
+  cp.payroll_year
+
+
+--vytvori tabulku, kde vystup je nazev potraviny, a prumerna cena za mnozstvi v konkretnim roce  
+CREATE TABLE t_ceny_potravin_v_letech as
+SELECT
+  cpc.name AS nazev_potraviny,
+  price_value AS mnozstvi,
+  price_unit AS jednotky,
+  ROUND(AVG(cp.value)::numeric, 2) AS prumerna_cena,
+  EXTRACT(YEAR FROM cp.date_from) AS rok
+FROM czechia_price cp
+INNER JOIN czechia_price_category cpc ON cp.category_code = cpc.code
+GROUP BY
+  cpc.name,
+  price_value,
+  price_unit,
+  EXTRACT(YEAR FROM cp.date_from)
+ORDER BY rok, nazev_potraviny;
