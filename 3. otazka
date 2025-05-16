@@ -39,4 +39,4 @@ FROM v_rozdil_cen_potravin vrcp
 ORDER BY vrcp.procentualni_rozdil 
 
 
---nejnizsi narust ceny potravin mezi roky 2006-2018 ma Cukr krystalový
+--nejnizsi narust ceny potravin mezi roky 2006-2018 maji Banany, Cukr krystalový dokonce zlevnil
