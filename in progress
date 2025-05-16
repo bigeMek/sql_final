@@ -1,109 +1,44 @@
-SELECT *
-FROM czechia_payroll
-
-SELECT *
-FROM czechia_payroll_calculation
-
-SELECT *
-FROM czechia_payroll_industry_branch
-
-SELECT *
-FROM czechia_payroll_unit
-
-SELECT *
-FROM czechia_payroll_value_type
-
-SELECT *
-FROM czechia_price 
-
-SELECT *
-FROM czechia_price_category 
-
-SELECT *
-FROM czechia_region 
-
-SELECT *
-FROM czechia_district
-
-
+4. Existuje rok, ve kterém byl meziroční nárůst cen potravin výrazně vyšší než růst mezd (větší než 10 %)?
 
 SELECT
-  cpib.name AS name,
-  cp.industry_branch_code AS industry_code,
-  cp.payroll_year AS year,
-  ROUND(AVG(cp.value), 1) AS avg_sallary
-FROM czechia_payroll cp
-LEFT JOIN czechia_payroll_calculation cpc ON cp.value_type_code = cpc.code
-INNER JOIN czechia_payroll_unit cpu ON cpu.code = cp.unit_code
-LEFT JOIN czechia_payroll_industry_branch cpib ON cpib.code = cp.industry_branch_code
-WHERE cp.calculation_code = '100'
-  AND cp.value_type_code = '5958'
-GROUP BY
-  cpib.name,
-  cp.industry_branch_code,
-  cp.payroll_year
-ORDER BY
-  cp.payroll_year desc,
-  --cp.industry_branch_code;
-	avg_sallary desc
+  potraviny.nazev_potraviny,
+  potraviny.rok,
+  potraviny.prumerna_cena,
+  potraviny.procentualni_zmena AS rust_ceny,
+  platy.avg_sallary AS prumerna_mzda,
+  platy.rust_mzdy,
+  ROUND(potraviny.procentualni_zmena - platy.rust_mzdy, 2) AS rozdil_rustu
+FROM (
+  SELECT
+    nazev_potraviny,
+    rok,
+    prumerna_cena,
+    ROUND(
+      (prumerna_cena - LAG(prumerna_cena) OVER (PARTITION BY nazev_potraviny ORDER BY rok))
+      / LAG(prumerna_cena) OVER (PARTITION BY nazev_potraviny ORDER BY rok) * 100, 2
+    ) AS procentualni_zmena
+  FROM t_ceny_potravin_v_letech
+) potraviny
+LEFT JOIN (
+  SELECT
+    "year",
+    ROUND(AVG(avg_sallary), 1) AS avg_sallary,
+    ROUND(
+      (AVG(avg_sallary) - LAG(AVG(avg_sallary)) OVER (ORDER BY "year"))
+      / LAG(AVG(avg_sallary)) OVER (ORDER BY "year") * 100, 2
+    ) AS rust_mzdy
+  FROM t_platy_v_letech
+  GROUP BY "year"
+) platy ON potraviny.rok = platy."year"
+WHERE potraviny.procentualni_zmena > 10
+ORDER BY rok, rozdil_rustu;
 
 
-CREATE OR REPLACE VIEW v_platy_v_letech AS
-SELECT
-  cpib.name AS name,
-  cp.industry_branch_code AS industry_code,
-  cp.payroll_year AS year,
-  ROUND(AVG(cp.value), 1) AS avg_sallary
-FROM czechia_payroll cp
-LEFT JOIN czechia_payroll_calculation cpc ON cp.value_type_code = cpc.code
-INNER JOIN czechia_payroll_unit cpu ON cpu.code = cp.unit_code
-LEFT JOIN czechia_payroll_industry_branch cpib ON cpib.code = cp.industry_branch_code
-WHERE cp.calculation_code = '100'
-  AND cp.value_type_code = '5958'
-  AND cpib.name IS NOT NULL
-GROUP BY
-  cpib.name,
-  cp.industry_branch_code,
-  cp.payroll_year
-ORDER BY
-	cp.payroll_year asc,
- 	--cp.industry_branch_code;
-	--avg_sallary DESC
-	cp.industry_branch_code
+/*
+Zde neni uplne jednoznacna odpoved, ve vetsine let, nektere potraviny zdrazili vice nez platy a nektere potraviny naopak zlevnili. U nekolika let bylo zdrazeni potravin vice markatni.
+Napr.:
+v roce 2008 zdrazilo nejvice potravin oproti rustu platu, 
+v roce 2011 nerosta tolik cena potravin oproti mzdam, ale zase zdrazily o to markantneji, rozdil mezi zdrazenim potravin a rustu platu byl mezi 20-30%
+Nejvetsiho rozdilu zdrazeni oproti platu jsme se dockali v roce 2007 u paprik, tam cena vyrostla rozdilem 88% oproti rustu platu.
 
-
-
-SELECT * FROM v_platy_v_letech
-
-
-SELECT *
-FROM
-	czechia_price cp
-INNER JOIN czechia_price_category cpc ON code = category_code
-LEFT JOIN czechia_region cr ON cr.code = region_code
-
-
-SELECT *
-FROM czechia_region
-
-	
-
-SELECT
-	cpc.name AS nazev_potraviny,
-	price_value AS mnozstvi,
-	price_unit AS jednotky,
-	value AS cena,
-	cr.name AS kraj,
-	extract(YEAR FROM cp.date_from) AS rok
-FROM
-	czechia_price cp
-INNER JOIN czechia_price_category cpc ON cpc.code = cp.category_code
-LEFT JOIN czechia_region cr ON cr.code = cp.region_code
-GROUP BY
-	cpc.name,
-	price_value,
-	price_unit,
-	cp.value,
-	cr.name,
-	cp.date_from
-	
+*/
