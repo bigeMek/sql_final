@@ -1,5 +1,21 @@
 -- 3. Která kategorie potravin zdražuje nejpomaleji (je u ní nejnižší percentuální meziroční nárůst)?
 
+
+
+--nejnizsi narust ceny potravin mezi roky 2006-2018 ma Banan. Cukr krystalový dokonce zlevnil
+
+SELECT
+  nazev_potraviny,
+  rok,
+  prumerna_cena
+FROM t_ceny_potravin_v_letech
+ORDER BY nazev_potraviny, rok;
+
+
+
+
+--Pokud bysme porovnavali rozdil mezi minimalni a maximalni cenou v letech, nejnizsi procentelni narust ma Cukr krystalovy 
+
 CREATE OR REPLACE VIEW v_rozdil_cen_potravin AS
 SELECT
     sub.nazev_polozky,
@@ -37,6 +53,3 @@ GROUP BY sub.nazev_polozky, min_ceny.min_cena, max_ceny.max_cena;
 SELECT *
 FROM v_rozdil_cen_potravin vrcp
 ORDER BY vrcp.procentualni_rozdil 
-
-
---nejnizsi narust ceny potravin mezi roky 2006-2018 maji Banany, Cukr krystalový dokonce zlevnil
